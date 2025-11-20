@@ -122,23 +122,16 @@ def create_admin_interface():
                     <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(to right, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LLM Proxy Admin</h1>
                 </div>
             """)
-        
+
         gr.Markdown("### Request Logs")
-        
+
         with gr.Row(elem_id="page-controls-row"):
             prev_btn = gr.Button("Previous")
             page_state = gr.State(value=1)
             page_label = gr.Markdown("Page 1", elem_id="page-label")
             next_btn = gr.Button("Next")
             refresh_btn = gr.Button("Refresh")
-        
-        # We use a standard HTML component or iterate to create dynamic expandable rows
-        # But Gradio native lists are static.
-        # Let's use a customized display using JSON component for detail view? 
-        # Or a Dataframe? Dataframe doesn't support expandable JSON cells well.
-        # Best approach involves a list of expandable elements, but Gradio construction is static.
-        # Alternative: A Dataframe to list summary, and click to view details.
-        
+
         with gr.Column():
             # Summary Table
             log_table = gr.Dataframe(
@@ -148,7 +141,7 @@ def create_admin_interface():
                 wrap=True,
                 column_widths=["5%", "15%", "10%", "20%", "10%", "5%"],
             )
-            
+
             # Detail View
             gr.Markdown("### Details")
             detail_req = gr.JSON(label="Request Body")
@@ -161,45 +154,42 @@ def create_admin_interface():
             if page < 1:
                 page = 1
             data, current_page, label = await fetch_data(page)
-            
+
             # Prepare summary for table
             table_data = []
             full_data = []
-            
+
             for row in data:
-                # row indices: 0:id, 1:ts, 2:meth, 3:path, 4:status, 5:fail, 6:req, 7:res
                 fail_display = "🔴" if row[5] == 1 else ""
                 table_data.append([row[0], row[1], row[2], row[3], row[4], fail_display])
                 full_data.append(row)
-                
+
             return table_data, full_data, current_page, label
 
         async def on_select(evt: gr.SelectData, full_data):
-            # evt.index is [row, col]
             row_idx = evt.index[0]
             if row_idx < len(full_data):
                 record = full_data[row_idx]
-                # record[6] is req, record[7] is res
                 return record[6], record[7]
             return None, None
 
         # Wiring
         refresh_btn.click(update_table, inputs=[page_state], outputs=[log_table, full_data_state, page_state, page_label])
-        
+
         async def go_prev(p):
             return max(1, p - 1)
-            
+
         async def go_next(p):
             return p + 1
 
         prev_btn.click(go_prev, inputs=[page_state], outputs=[page_state]).then(
             update_table, inputs=[page_state], outputs=[log_table, full_data_state, page_state, page_label]
         )
-        
+
         next_btn.click(go_next, inputs=[page_state], outputs=[page_state]).then(
             update_table, inputs=[page_state], outputs=[log_table, full_data_state, page_state, page_label]
         )
-        
+
         log_table.select(on_select, inputs=[full_data_state], outputs=[detail_req, detail_res])
 
         # Initial load

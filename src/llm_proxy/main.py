@@ -35,10 +35,11 @@ app.include_router(proxy_router)
 # We mount it under /admin
 admin_app = create_admin_interface()
 app = gr.mount_gradio_app(
-    app, 
-    admin_app, 
-    path="/admin", 
+    app,
+    admin_app,
+    path="/admin",
     auth=auth_check,
+    auth_message='<div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;"><div class="app-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" /></linearGradient></defs><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#grad1)" fill="none"/></svg></div><h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(to right, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LLM Proxy Admin</h1></div><div style="text-align: center; margin-bottom: 10px;"><p>Welcome to the admin panel. Please log in to continue.</p></div>',
     allowed_paths=["/"]  # Sometimes needed for resources
 )
 
