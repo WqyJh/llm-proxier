@@ -39,6 +39,7 @@ async def log_interaction(
     request_body: dict | None,
     response_body: str,
     status_code: int,
+    fail: int = 0,
 ):
     log_entry = RequestLog(
         method=method,
@@ -46,6 +47,7 @@ async def log_interaction(
         request_body=request_body,
         response_body=response_body,
         status_code=status_code,
+        fail=fail,
     )
     db.add(log_entry)
     await db.commit()
@@ -97,6 +99,7 @@ async def proxy_openai(path: str, request: Request, db: AsyncSession = Depends(g
             await client.aclose()
             
             response_text = b"".join(full_response).decode("utf-8", errors="replace")
+            fail_flag = 1 if r.status_code >= 400 else 0
             
             # Log
             # Create a new session to ensure thread safety and scope validity
@@ -109,6 +112,7 @@ async def proxy_openai(path: str, request: Request, db: AsyncSession = Depends(g
                     request_json,
                     response_text,
                     r.status_code,
+                    fail_flag,
                 )
                 
     return StreamingResponse(

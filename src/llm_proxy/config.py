@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./llm_proxy.db"
+    AUTO_MIGRATE_DB: bool = True
 
     # Admin Dashboard
     ADMIN_USERNAME: str = "admin"

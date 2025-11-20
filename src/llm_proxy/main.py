@@ -5,12 +5,14 @@ from contextlib import asynccontextmanager
 from llm_proxy.database import init_db
 from llm_proxy.proxy import router as proxy_router
 from llm_proxy.admin import create_admin_interface, auth_check
+from llm_proxy.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await init_db()
+    if settings.AUTO_MIGRATE_DB:
+        await init_db()
     yield
     # Shutdown
 

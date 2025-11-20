@@ -61,6 +61,7 @@ async def fetch_data(page: int):
             log.method,
             log.path,
             log.status_code,
+            log.fail,
             log.request_body,  # JSON component handles dict
             log.response_body  # JSON component handles string or dict
         ])
@@ -69,13 +70,29 @@ async def fetch_data(page: int):
 
 
 def create_admin_interface():
-    with gr.Blocks(title="LLM Proxy Admin") as demo:
+    with gr.Blocks(
+        title="LLM Proxy Admin",
+        css="""
+#page-controls-row.row.unequal-height {
+    /* 强制这一行的所有子元素等高（与按钮同高） */
+    align-items: stretch !important;
+}
+
+/* 确保页码这个块本身参与等高布局并内部用 flex 居中 */
+#page-label.block {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+"""
+    ) as demo:
         gr.Markdown("## Request Logs")
         
-        with gr.Row():
+        with gr.Row(elem_id="page-controls-row"):
             prev_btn = gr.Button("Previous")
             page_state = gr.State(value=1)
-            page_label = gr.Label(value="Page 1", show_label=False)
+            page_label = gr.Markdown("Page 1", elem_id="page-label")
             next_btn = gr.Button("Next")
             refresh_btn = gr.Button("Refresh")
         
@@ -86,21 +103,20 @@ def create_admin_interface():
         # Best approach involves a list of expandable elements, but Gradio construction is static.
         # Alternative: A Dataframe to list summary, and click to view details.
         
-        with gr.Row():
+        with gr.Column():
             # Summary Table
             log_table = gr.Dataframe(
-                headers=["ID", "Timestamp", "Method", "Path", "Status"],
-                datatype=["number", "str", "str", "str", "number"],
+                headers=["ID", "Timestamp", "Method", "Path", "Status", "Fail"],
+                datatype=["number", "str", "str", "str", "number", "str"],
                 interactive=False,
                 wrap=True,
-                column_widths=["5%", "15%", "10%", "20%", "10%"]
+                column_widths=["5%", "15%", "10%", "20%", "10%", "5%"],
             )
             
             # Detail View
-            with gr.Column():
-                gr.Markdown("### Details")
-                detail_req = gr.JSON(label="Request Body")
-                detail_res = gr.Code(label="Response Body", language="json", wrap_lines=True)
+            gr.Markdown("### Details")
+            detail_req = gr.JSON(label="Request Body")
+            detail_res = gr.Code(label="Response Body", language="json", wrap_lines=True)
 
         # Hidden state to store full data including bodies
         full_data_state = gr.State([])
@@ -115,8 +131,9 @@ def create_admin_interface():
             full_data = []
             
             for row in data:
-                # row indices: 0:id, 1:ts, 2:meth, 3:path, 4:status, 5:req, 6:res
-                table_data.append([row[0], row[1], row[2], row[3], row[4]])
+                # row indices: 0:id, 1:ts, 2:meth, 3:path, 4:status, 5:fail, 6:req, 7:res
+                fail_display = "🔴" if row[5] == 1 else ""
+                table_data.append([row[0], row[1], row[2], row[3], row[4], fail_display])
                 full_data.append(row)
                 
             return table_data, full_data, current_page, label
@@ -126,8 +143,8 @@ def create_admin_interface():
             row_idx = evt.index[0]
             if row_idx < len(full_data):
                 record = full_data[row_idx]
-                # record[5] is req, record[6] is res
-                return record[5], record[6]
+                # record[6] is req, record[7] is res
+                return record[6], record[7]
             return None, None
 
         # Wiring
