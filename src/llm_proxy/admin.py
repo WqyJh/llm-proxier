@@ -70,8 +70,17 @@ async def fetch_data(page: int):
 
 
 def create_admin_interface():
+    theme = gr.themes.Soft(
+        primary_hue="indigo",
+        secondary_hue="slate",
+        neutral_hue="slate",
+        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"]
+    )
+
     with gr.Blocks(
+        theme=theme,
         title="LLM Proxy Admin",
+        head='<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">',
         css="""
 #page-controls-row.row.unequal-height {
     /* 强制这一行的所有子元素等高（与按钮同高） */
@@ -85,9 +94,36 @@ def create_admin_interface():
     justify-content: center;
     text-align: center;
 }
+
+.header-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.app-logo {
+    margin-right: 12px;
+}
 """
     ) as demo:
-        gr.Markdown("## Request Logs")
+        with gr.Row(elem_classes="header-container"):
+            gr.HTML("""
+                <div style="display: flex; align-items: center;">
+                    <div class="app-logo">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                              <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                            </linearGradient>
+                          </defs>
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#grad1)" fill="none"/>
+                        </svg>
+                    </div>
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(to right, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LLM Proxy Admin</h1>
+                </div>
+            """)
+        
+        gr.Markdown("### Request Logs")
         
         with gr.Row(elem_id="page-controls-row"):
             prev_btn = gr.Button("Previous")

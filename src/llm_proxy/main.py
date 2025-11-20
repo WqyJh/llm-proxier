@@ -1,5 +1,7 @@
 import gradio as gr
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from llm_proxy.database import init_db
@@ -18,6 +20,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LLM Proxy", lifespan=lifespan)
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("src/llm_proxy/assets/icon.svg")
+
+# Mount Static Files
+app.mount("/assets", StaticFiles(directory="src/llm_proxy/assets"), name="assets")
 
 # Mount Proxy Router
 app.include_router(proxy_router)
