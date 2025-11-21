@@ -17,6 +17,9 @@ dependencies = [
     "greenlet>=3.2.4",
 ]
 
+[project.scripts]
+llm-proxy = "llm_proxy.main:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_proxy"]
 
