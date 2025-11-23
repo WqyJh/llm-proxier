@@ -17,6 +17,9 @@ dependencies = [
     "greenlet>=3.2.4",
 ]
 
+[project.urls]
+Repository = "https://github.com/WqyJh/llm-proxy.git"
+
 [project.scripts]
 llm-proxy = "llm_proxy.main:main"
 
