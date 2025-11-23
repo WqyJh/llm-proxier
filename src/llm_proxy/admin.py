@@ -1,9 +1,8 @@
 import json
 import math
-from typing import Any
 
 import gradio as gr
-from sqlalchemy import func, select, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from llm_proxy.config import settings
@@ -12,14 +11,14 @@ from llm_proxy.database import RequestLog, async_session
 PAGE_SIZE = 10
 
 
-def parse_streaming_response(response_body: str | None) -> list[dict] | None:
+def parse_streaming_response(response_body: str | None) -> list[dict] | None:  # noqa: PLR0911
     """
-    只解析严格符合 SSE 流格式的响应：
+    只解析严格符合 SSE 流格式的响应:
       data: <json>\\n\\n
-    最后一行可能是：data: [DONE]
+    最后一行可能是: data: [DONE]
 
-    其它格式（普通 JSON、HTML 等）一律返回 None，表示“不要当流式 JSON 解析”，
-    由上层直接按字符串展示（用 gr.Code）。
+    其它格式(普通 JSON,HTML 等)一律返回 None,表示"不要当流式 JSON 解析",
+    由上层直接按字符串展示(用 gr.Code)。
     """
     if response_body is None:
         return None
@@ -33,22 +32,22 @@ def parse_streaming_response(response_body: str | None) -> list[dict] | None:
     lines = response_body.split("\n\n")
     chunks: list[dict] = []
     for line in lines:
-        line = line.strip()
-        if not line:
+        stripped_line = line.strip()
+        if not stripped_line:
             continue
-        if not line.startswith("data: "):
-            # 只要有一行不是 data: 开头，就认为整体不是规范流式格式
+        if not stripped_line.startswith("data: "):
+            # 只要有一行不是 data: 开头,就认为整体不是规范流式格式
             return None
-        json_str = line[6:].strip()
+        json_str = stripped_line[6:].strip()
         if json_str == "[DONE]":
             continue
         try:
             chunk = json.loads(json_str)
         except json.JSONDecodeError:
-            # 任意一块解析失败，则整体放弃解析
+            # 任意一块解析失败,则整体放弃解析
             return None
-        # 只接受对象/数组，标量也不当流式 JSON 处理
-        if not isinstance(chunk, (dict, list)):
+        # 只接受对象/数组,标量也不当流式 JSON 处理
+        if not isinstance(chunk, dict | list):
             return None
         chunks.append(chunk)
 
@@ -65,12 +64,7 @@ async def get_total_pages(session: AsyncSession) -> int:
 async def fetch_logs(page: int = 1) -> list[RequestLog]:
     offset = (page - 1) * PAGE_SIZE
     async with async_session() as session:
-        stmt = (
-            select(RequestLog)
-            .order_by(desc(RequestLog.timestamp))
-            .offset(offset)
-            .limit(PAGE_SIZE)
-        )
+        stmt = select(RequestLog).order_by(desc(RequestLog.timestamp)).offset(offset).limit(PAGE_SIZE)
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
@@ -86,7 +80,7 @@ async def fetch_data(page: int):
     # Format data for display. Gradio Dataframe handles list of lists/dicts
     data = []
     for log in logs:
-        # 原样存储 response_body，解析逻辑在前端 on_select 里做
+        # 原样存储 response_body,解析逻辑在前端 on_select 里做
         data.append(
             [
                 log.id,
@@ -103,7 +97,7 @@ async def fetch_data(page: int):
     return data, page, f"Page {page} of {total_pages}"
 
 
-def create_admin_interface():
+def create_admin_interface():  # noqa: PLR0915
     theme = gr.themes.Soft(
         primary_hue="indigo",
         secondary_hue="slate",
@@ -122,7 +116,7 @@ def create_admin_interface():
         head='<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">',
         css="""
 #page-controls-row.row.unequal-height {
-    /* 强制这一行的所有子元素等高（与按钮同高） */
+    /* 强制这一行的所有子元素等高(与按钮同高) */
     align-items: stretch !important;
 }
 
@@ -142,7 +136,7 @@ def create_admin_interface():
 .app-logo {
     margin-right: 12px;
 }
-"""
+""",
     ) as demo:
         with gr.Row(elem_classes="header-container"):
             gr.HTML(
@@ -186,21 +180,16 @@ def create_admin_interface():
             # Detail View
             gr.Markdown("### Details")
             detail_req = gr.JSON(label="Request Body")
-            # 流式 JSON 结果（data: <json>\n\n）在这里用 JSON 展示
-            detail_res_stream = gr.JSON(
-                label="Response Body", visible=False
-            )
+            # 流式 JSON 结果(data: <json>\n\n)在这里用 JSON 展示
+            detail_res_stream = gr.JSON(label="Response Body", visible=False)
             # 非流式 / HTML / 其它文本在这里原样展示
-            detail_res_raw = gr.Code(
-                label="Response Body", language="json", visible=False, wrap_lines=True
-            )
+            detail_res_raw = gr.Code(label="Response Body", language="json", visible=False, wrap_lines=True)
 
         # Hidden state to store full data including bodies
         full_data_state = gr.State([])
 
         async def update_table(page):
-            if page < 1:
-                page = 1
+            page = max(page, 1)
             data, current_page, label = await fetch_data(page)
 
             # Prepare summary for table
@@ -209,9 +198,7 @@ def create_admin_interface():
 
             for row in data:
                 fail_display = "🔴" if row[5] == 1 else ""
-                table_data.append(
-                    [row[0], row[1], row[2], row[3], row[4], fail_display]
-                )
+                table_data.append([row[0], row[1], row[2], row[3], row[4], fail_display])
                 full_data.append(row)
 
             return table_data, full_data, current_page, label
@@ -229,30 +216,30 @@ def create_admin_interface():
             req_val = record[6] if record[6] is not None else {}
             resp_body = record[7]
 
-            # 1. 优先判断是否为流式 SSE：data: <json>\n\n
+            # 1. 优先判断是否为流式 SSE: data: <json>\n\n
             parsed_chunks = parse_streaming_response(resp_body)
             if parsed_chunks is not None:
-                # 流式 JSON chunk 列表，用 JSON 展示
+                # 流式 JSON chunk 列表,用 JSON 展示
                 return (
                     req_val,
                     gr.update(value=parsed_chunks, visible=True),
                     gr.update(value="", visible=False),
                 )
 
-            # 2. 非流式：尝试当普通 JSON 解析（dict / list）
+            # 2. 非流式: 尝试当普通 JSON 解析(dict / list)
             json_val = None
-            if isinstance(resp_body, (dict, list)):
+            if isinstance(resp_body, dict | list):
                 json_val = resp_body
             elif isinstance(resp_body, str):
                 try:
                     loaded = json.loads(resp_body)
-                    if isinstance(loaded, (dict, list)):
+                    if isinstance(loaded, dict | list):
                         json_val = loaded
                 except json.JSONDecodeError:
                     json_val = None
 
             if json_val is not None:
-                # 普通 JSON，用 JSON 组件展示
+                # 普通 JSON,用 JSON 组件展示
                 return (
                     req_val,
                     gr.update(value=json_val, visible=True),

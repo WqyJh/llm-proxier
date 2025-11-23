@@ -1,7 +1,7 @@
 import datetime
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
-from sqlalchemy import JSON, Text, DateTime, inspect, text
+from sqlalchemy import JSON, DateTime, Text, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -19,16 +19,16 @@ class RequestLog(Base):
     __tablename__ = "request_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    timestamp: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
+    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
     method: Mapped[str] = mapped_column(Text)
     path: Mapped[str] = mapped_column(Text)
-    
-    # We store headers/body as JSON or Text. 
+
+    # We store headers/body as JSON or Text.
     # Request body can be large.
     request_body: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    response_body: Mapped[str | None] = mapped_column(Text, nullable=True)  # Response might be stream, stored as aggregated string
+    response_body: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )  # Response might be stream, stored as aggregated string
     status_code: Mapped[int | None] = mapped_column()
     fail: Mapped[int] = mapped_column(default=0)
 
@@ -58,9 +58,7 @@ async def init_db():
                     sync_conn.execute(text("UPDATE request_logs SET fail = 0 WHERE fail IS NULL"))
                 else:
                     # Generic SQL for most other dialects
-                    sync_conn.execute(
-                        text("ALTER TABLE request_logs ADD COLUMN fail INTEGER DEFAULT 0")
-                    )
+                    sync_conn.execute(text("ALTER TABLE request_logs ADD COLUMN fail INTEGER DEFAULT 0"))
                     sync_conn.execute(text("UPDATE request_logs SET fail = 0 WHERE fail IS NULL"))
 
         await conn.run_sync(migrate)

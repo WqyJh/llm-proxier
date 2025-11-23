@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +7,7 @@ class Settings(BaseSettings):
 
     # Upstream Configuration
     UPSTREAM_BASE_URL: str
-    UPSTREAM_API_KEY: Optional[str] = None
+    UPSTREAM_API_KEY: str | None = None
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./llm_proxy.db"
