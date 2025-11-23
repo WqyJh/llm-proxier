@@ -1,3 +1,4 @@
+import importlib.resources
 import sys
 from contextlib import asynccontextmanager
 
@@ -27,11 +28,15 @@ app = FastAPI(title="LLM Proxier", lifespan=lifespan)
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse("src/llm_proxier/assets/icon.svg")
+    # Use importlib.resources to access packaged assets
+    assets_path = importlib.resources.files("llm_proxier") / "assets" / "icon.svg"
+    return FileResponse(str(assets_path))
 
 
 # Mount Static Files
-app.mount("/assets", StaticFiles(directory="src/llm_proxier/assets"), name="assets")
+# Use importlib.resources to access packaged assets
+assets_path = importlib.resources.files("llm_proxier") / "assets"
+app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
 
 # Mount Proxy Router
 app.include_router(proxy_router)
