@@ -1,6 +1,6 @@
 [project]
 name = "llm-proxier"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight LLM proxy with logging and admin dashboard"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,6 +25,7 @@ llm-proxier = "llm_proxier.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_proxier"]
+include = ["src/llm_proxier/assets/**/*"]
 
 [tool.ruff]
 line-length = 120

@@ -50,7 +50,7 @@ A lightweight LLM (Large Language Model) proxy with comprehensive request loggin
 
 1. **Install from PyPI**
 ```bash
-pip install llm-proxier==0.1.0
+pip install llm-proxier==0.1.1
 ```
 
 2. **Or install from source**
