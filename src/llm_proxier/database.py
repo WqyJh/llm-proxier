@@ -5,7 +5,7 @@ from sqlalchemy import JSON, DateTime, Text, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from llm_proxy.config import settings
+from llm_proxier.config import settings
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, expire_on_commit=False)

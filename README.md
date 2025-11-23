@@ -1,4 +1,4 @@
-# LLM Proxy
+# LLM Proxier
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
@@ -50,14 +50,14 @@ A lightweight LLM (Large Language Model) proxy with comprehensive request loggin
 
 1. **Install from PyPI**
 ```bash
-pip install llm-proxy==0.1.0
+pip install llm-proxier==0.1.0
 ```
 
 2. **Or install from source**
 ```bash
 # Clone the repository
-git clone https://github.com/WqyJh/llm-proxy.git
-cd llm-proxy
+git clone https://github.com/WqyJh/llm-proxier.git
+cd llm-proxier
 
 # Install with pip
 pip install -e .
@@ -86,13 +86,13 @@ AUTO_MIGRATE_DB=true
 4. **Run the application**
 ```bash
 # Using the CLI command
-llm-proxy
+llm-proxier
 
 # Or directly
-python -m llm_proxy.main
+python -m llm_proxier.main
 
 # With custom host and port
-llm-proxy --host 0.0.0.0 --port 8000
+llm-proxier --host 0.0.0.0 --port 8000
 ```
 
 ## Usage
@@ -157,9 +157,9 @@ The application uses SQLite for data persistence. Database files are stored in t
 ### Project Structure
 
 ```
-llm-proxy/
+llm-proxier/
 ├── src/
-│   └── llm_proxy/
+│   └── llm_proxier/
 │       ├── __init__.py
 │       ├── admin.py          # Admin dashboard interface
 │       ├── config.py         # Configuration management
@@ -205,7 +205,7 @@ pre-commit run --all-files
 pytest
 
 # Run with coverage
-pytest --cov=src/llm_proxy
+pytest --cov=src/llm_proxier
 ```
 
 ## API Compatibility

@@ -5,8 +5,8 @@ import gradio as gr
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from llm_proxy.config import settings
-from llm_proxy.database import RequestLog, async_session
+from llm_proxier.config import settings
+from llm_proxier.database import RequestLog, async_session
 
 PAGE_SIZE = 10
 
@@ -112,7 +112,7 @@ def create_admin_interface():  # noqa: PLR0915
 
     with gr.Blocks(
         theme=theme,
-        title="LLM Proxy Admin",
+        title="LLM Proxier Admin",
         head='<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">',
         css="""
 #page-controls-row.row.unequal-height {
@@ -153,7 +153,7 @@ def create_admin_interface():  # noqa: PLR0915
                           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#grad1)" fill="none"/>
                         </svg>
                     </div>
-                    <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(to right, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LLM Proxy Admin</h1>
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 600; background: linear-gradient(to right, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LLM Proxier Admin</h1>
                 </div>
             """
             )

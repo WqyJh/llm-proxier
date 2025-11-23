@@ -1,5 +1,5 @@
 [project]
-name = "llm-proxy"
+name = "llm-proxier"
 version = "0.1.0"
 description = "A lightweight LLM proxy with logging and admin dashboard"
 readme = "README.md"
@@ -18,13 +18,13 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/WqyJh/llm-proxy.git"
+Repository = "https://github.com/WqyJh/llm-proxier.git"
 
 [project.scripts]
-llm-proxy = "llm_proxy.main:main"
+llm-proxier = "llm_proxier.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/llm_proxy"]
+packages = ["src/llm_proxier"]
 
 [tool.ruff]
 line-length = 120

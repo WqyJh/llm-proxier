@@ -7,4 +7,4 @@ __pycache__/
 .coverage
 htmlcov/
 .ruff_cache/
-llm_proxy.db
+llm_proxier.db

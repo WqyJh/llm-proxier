@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from llm_proxy.config import settings
-from llm_proxy.database import RequestLog, async_session
+from llm_proxier.config import settings
+from llm_proxier.database import RequestLog, async_session
 
 router = APIRouter()
 

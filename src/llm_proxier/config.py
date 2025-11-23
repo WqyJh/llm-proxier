@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     UPSTREAM_API_KEY: str | None = None
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./llm_proxy.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./llm_proxier.db"
     AUTO_MIGRATE_DB: bool = True
 
     # Admin Dashboard
