@@ -54,6 +54,78 @@ async def log_interaction(db: AsyncSession, data: LogData):
     await db.commit()
 
 
+@router.get("/v1/models", dependencies=[Depends(verify_api_key)])
+async def proxy_models(request: Request):
+    """Proxy /v1/models endpoint with transparent request/response body forwarding"""
+    # Read body
+    body_bytes = await request.body()
+    try:
+        request_json = json.loads(body_bytes) if body_bytes else None
+    except json.JSONDecodeError:
+        request_json = None
+
+    base = settings.UPSTREAM_BASE_URL.rstrip("/")
+    if base.endswith("/v1"):
+        upstream_url = f"{base}/models"
+    else:
+        upstream_url = f"{base}/v1/models"
+
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if settings.UPSTREAM_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.UPSTREAM_API_KEY}"
+
+    # 直接透传下游的原始 body,避免 JSON 重新编码带来的任何改动
+    body_bytes = await request.body()
+
+    client = httpx.AsyncClient()
+    req = client.build_request(
+        method=request.method,
+        url=upstream_url,
+        headers=headers,
+        content=body_bytes,
+        timeout=60.0,
+    )
+
+    r = await client.send(req, stream=True)
+
+    async def stream_wrapper():
+        full_response = []
+        try:
+            async for chunk in r.aiter_bytes():
+                full_response.append(chunk)
+                yield chunk
+        finally:
+            await r.aclose()
+            await client.aclose()
+
+            response_text = b"".join(full_response).decode("utf-8", errors="replace")
+            fail_flag = 1 if r.status_code >= HTTP_STATUS_BAD_REQUEST else 0
+
+            # Log
+            # Create a new session to ensure thread safety and scope validity
+            async with async_session() as session:
+                await log_interaction(
+                    session,
+                    LogData(
+                        method=request.method,
+                        path="models",
+                        request_body=request_json,
+                        response_body=response_text,
+                        status_code=r.status_code,
+                        fail=fail_flag,
+                    ),
+                )
+
+    return StreamingResponse(
+        stream_wrapper(),
+        status_code=r.status_code,
+        media_type=r.headers.get("content-type"),
+        background=None,  # Logging is handled in finally block of generator
+    )
+
+
 @router.post("/v1/{path:path}", dependencies=[Depends(verify_api_key)])
 async def proxy_openai(path: str, request: Request):
     # Read body
