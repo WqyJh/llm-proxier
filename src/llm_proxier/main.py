@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import gradio as gr
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -24,6 +25,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LLM Proxier", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
