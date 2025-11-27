@@ -528,7 +528,6 @@ dependencies = [
     { name = "gradio" },
     { name = "greenlet" },
     { name = "httpx" },
-    { name = "pre-commit" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
@@ -536,6 +535,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -548,7 +548,6 @@ requires-dist = [
     { name = "gradio", specifier = ">=5.49.1,<6" },
     { name = "greenlet", specifier = ">=3.2.4" },
     { name = "httpx", specifier = ">=0.26.0" },
-    { name = "pre-commit", specifier = ">=3.6.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
     { name = "sqlalchemy", specifier = ">=2.0.25" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27.0" },
@@ -556,6 +555,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pre-commit", specifier = ">=4.4.0" },
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "ruff", specifier = ">=0.14.5" },
 ]

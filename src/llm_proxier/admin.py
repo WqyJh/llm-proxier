@@ -1,5 +1,6 @@
 import json
 import math
+import tempfile
 
 import gradio as gr
 from sqlalchemy import desc, func, select
@@ -167,14 +168,19 @@ def create_admin_interface():  # noqa: PLR0915
             next_btn = gr.Button("Next")
             refresh_btn = gr.Button("Refresh")
 
+        with gr.Row():
+            export_selected_btn = gr.Button("Export Selected JSON")
+            export_all_btn = gr.Button("Export All JSON")
+            download_file = gr.File(label="Download JSON", visible=False)
+
         with gr.Column():
             # Summary Table
             log_table = gr.Dataframe(
-                headers=["ID", "Timestamp", "Method", "Path", "Status", "Fail"],
-                datatype=["number", "str", "str", "str", "number", "str"],
-                interactive=False,
+                headers=["Select", "ID", "Timestamp", "Method", "Path", "Status", "Fail"],
+                datatype=["bool", "number", "str", "str", "str", "number", "str"],
+                interactive=True,
                 wrap=True,
-                column_widths=["5%", "15%", "10%", "20%", "10%", "5%"],
+                column_widths=["5%", "5%", "15%", "10%", "20%", "10%", "5%"],
             )
 
             # Detail View
@@ -198,13 +204,20 @@ def create_admin_interface():  # noqa: PLR0915
 
             for row in data:
                 fail_display = "🔴" if row[5] == 1 else ""
-                table_data.append([row[0], row[1], row[2], row[3], row[4], fail_display])
+                # Insert False for the "Select" checkbox column
+                table_data.append([False, row[0], row[1], row[2], row[3], row[4], fail_display])
                 full_data.append(row)
 
             return table_data, full_data, current_page, label
 
         async def on_select(evt: gr.SelectData, full_data):
             row_idx = evt.index[0]
+            col_idx = evt.index[1]
+
+            # If clicking the checkbox column (index 0), do not update details
+            if col_idx == 0:
+                return gr.skip(), gr.skip(), gr.skip()
+
             if row_idx < 0 or row_idx >= len(full_data):
                 return (
                     {},
@@ -284,6 +297,78 @@ def create_admin_interface():  # noqa: PLR0915
             inputs=[full_data_state],
             outputs=[detail_req, detail_res_stream, detail_res_raw],
         )
+
+        # Export functions
+        def save_json(rows):
+            if not rows:
+                return None
+
+            export_data = []
+            for r in rows:
+                # r structure from fetch_data: [id, timestamp, method, path, status, fail, req_body, resp_body]
+                item = {
+                    "id": r[0],
+                    "timestamp": r[1],
+                    "method": r[2],
+                    "path": r[3],
+                    "status_code": r[4],
+                    "fail": r[5],
+                    "request_body": r[6],
+                    "response_body": r[7],
+                }
+                export_data.append(item)
+
+            # Create a temporary file
+            fd, path = tempfile.mkstemp(suffix=".json", prefix="export_")
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(export_data, f, ensure_ascii=False, indent=2)
+            return path
+
+        async def export_selected(table_val, full_data):
+            if not full_data:
+                return gr.update(visible=True, value=None)
+
+            selected_rows = []
+            # table_val is a pandas DataFrame
+            # Iterate over rows
+            for i, row in table_val.iterrows():
+                if i < len(full_data) and row["Select"] is True:  # Check "Select" column
+                    selected_rows.append(full_data[i])
+
+            if not selected_rows:
+                return gr.update(visible=True, value=None)
+
+            path = save_json(selected_rows)
+            return gr.update(visible=True, value=path)
+
+        async def export_all():
+            async with async_session() as session:
+                # Fetch all logs
+                stmt = select(RequestLog).order_by(desc(RequestLog.timestamp))
+                result = await session.execute(stmt)
+                logs = result.scalars().all()
+
+                data = []
+                for log in logs:
+                    data.append(
+                        [
+                            log.id,
+                            log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            log.method,
+                            log.path,
+                            log.status_code,
+                            log.fail,
+                            log.request_body,
+                            log.response_body,
+                        ]
+                    )
+
+                path = save_json(data)
+                return gr.update(visible=True, value=path)
+
+        export_selected_btn.click(export_selected, inputs=[log_table, full_data_state], outputs=[download_file])
+
+        export_all_btn.click(export_all, inputs=[], outputs=[download_file])
 
         # Initial load
         demo.load(
