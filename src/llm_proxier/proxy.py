@@ -46,7 +46,7 @@ async def verify_api_key(request: Request):
             )
 
     # Try api-key header
-    api_key_header = request.headers.get("api-key")
+    api_key_header = request.headers.get("x-api-key") or request.headers.get("api-key")
     if api_key_header:
         if api_key_header == settings.PROXY_API_KEY:
             return True
