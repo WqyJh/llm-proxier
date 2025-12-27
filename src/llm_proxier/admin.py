@@ -1,6 +1,7 @@
 import json
 import math
 import tempfile
+from datetime import UTC, timedelta
 
 import gradio as gr
 from sqlalchemy import desc, func, select
@@ -70,7 +71,7 @@ async def fetch_logs(page: int = 1) -> list[RequestLog]:
         return list(result.scalars().all())
 
 
-async def fetch_data(page: int):
+async def fetch_data(page: int, tz_offset: int = 0):
     async with async_session() as session:
         total_pages = await get_total_pages(session)
         logs = await fetch_logs(page)
@@ -81,11 +82,16 @@ async def fetch_data(page: int):
     # Format data for display. Gradio Dataframe handles list of lists/dicts
     data = []
     for log in logs:
-        # 原样存储 response_body,解析逻辑在前端 on_select 里做
+        # Apply timezone offset to convert from UTC to browser local time
+        # tz_offset is in minutes, positive for east of UTC, negative for west
+        adjusted_timestamp = log.timestamp.replace(tzinfo=None)  # Remove timezone info
+        adjusted_timestamp = adjusted_timestamp.replace(tzinfo=UTC)  # Mark as UTC
+        adjusted_timestamp = adjusted_timestamp + timedelta(minutes=tz_offset)
+
         data.append(
             [
                 log.id,
-                log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                adjusted_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                 log.method,
                 log.path,
                 log.status_code,
@@ -168,9 +174,43 @@ def create_admin_interface():  # noqa: PLR0915
             next_btn = gr.Button("Next")
             refresh_btn = gr.Button("Refresh")
 
+        # Timezone selector with export buttons
         with gr.Row():
-            export_selected_btn = gr.Button("Export Selected JSON")
-            export_all_btn = gr.Button("Export All JSON")
+            tz_dropdown = gr.Dropdown(
+                choices=[
+                    ("UTC-12:00", -720),
+                    ("UTC-11:00", -660),
+                    ("UTC-10:00", -600),
+                    ("UTC-09:00", -540),
+                    ("UTC-08:00", -480),
+                    ("UTC-07:00", -420),
+                    ("UTC-06:00", -360),
+                    ("UTC-05:00", -300),
+                    ("UTC-04:00", -240),
+                    ("UTC-03:00", -180),
+                    ("UTC-02:00", -120),
+                    ("UTC-01:00", -60),
+                    ("UTC+00:00", 0),
+                    ("UTC+01:00", 60),
+                    ("UTC+02:00", 120),
+                    ("UTC+03:00", 180),
+                    ("UTC+04:00", 240),
+                    ("UTC+05:00", 300),
+                    ("UTC+05:30", 330),
+                    ("UTC+06:00", 360),
+                    ("UTC+07:00", 420),
+                    ("UTC+08:00", 480),
+                    ("UTC+09:00", 540),
+                    ("UTC+09:30", 570),
+                    ("UTC+10:00", 600),
+                    ("UTC+11:00", 660),
+                    ("UTC+12:00", 720),
+                ],
+                value=0,
+                show_label=False,
+            )
+            export_selected_btn = gr.Button("Export Selected")
+            export_all_btn = gr.Button("Export All")
             download_file = gr.File(label="Download JSON", visible=False)
 
         with gr.Column():
@@ -186,7 +226,7 @@ def create_admin_interface():  # noqa: PLR0915
             # Detail View
             gr.Markdown("### Details")
             detail_req = gr.JSON(label="Request Body")
-            # 流式 JSON 结果(data: <json>\n\n)在这里用 JSON 展示
+            # 流式 JSON 结果(data: <json>\\n\\n)在这里用 JSON 展示
             detail_res_stream = gr.JSON(label="Response Body", visible=False)
             # 非流式 / HTML / 其它文本在这里原样展示
             detail_res_raw = gr.Code(label="Response Body", language="json", visible=False, wrap_lines=True)
@@ -194,9 +234,12 @@ def create_admin_interface():  # noqa: PLR0915
         # Hidden state to store full data including bodies
         full_data_state = gr.State([])
 
-        async def update_table(page):
+        # Timezone offset state (in minutes, positive for east of UTC, negative for west)
+        tz_offset_state = gr.State(0)
+
+        async def update_table(page, tz_offset):
             page = max(page, 1)
-            data, current_page, label = await fetch_data(page)
+            data, current_page, label = await fetch_data(page, tz_offset)
 
             # Prepare summary for table
             table_data = []
@@ -229,7 +272,7 @@ def create_admin_interface():  # noqa: PLR0915
             req_val = record[6] if record[6] is not None else {}
             resp_body = record[7]
 
-            # 1. 优先判断是否为流式 SSE: data: <json>\n\n
+            # 1. 优先判断是否为流式 SSE: data: <json>\\n\\n
             parsed_chunks = parse_streaming_response(resp_body)
             if parsed_chunks is not None:
                 # 流式 JSON chunk 列表,用 JSON 展示
@@ -270,7 +313,7 @@ def create_admin_interface():  # noqa: PLR0915
         # Wiring
         refresh_btn.click(
             update_table,
-            inputs=[page_state],
+            inputs=[page_state, tz_offset_state],
             outputs=[log_table, full_data_state, page_state, page_label],
         )
 
@@ -282,13 +325,13 @@ def create_admin_interface():  # noqa: PLR0915
 
         prev_btn.click(go_prev, inputs=[page_state], outputs=[page_state]).then(
             update_table,
-            inputs=[page_state],
+            inputs=[page_state, tz_offset_state],
             outputs=[log_table, full_data_state, page_state, page_label],
         )
 
         next_btn.click(go_next, inputs=[page_state], outputs=[page_state]).then(
             update_table,
-            inputs=[page_state],
+            inputs=[page_state, tz_offset_state],
             outputs=[log_table, full_data_state, page_state, page_label],
         )
 
@@ -341,7 +384,7 @@ def create_admin_interface():  # noqa: PLR0915
             path = save_json(selected_rows)
             return gr.update(visible=True, value=path)
 
-        async def export_all():
+        async def export_all(tz_offset):
             async with async_session() as session:
                 # Fetch all logs
                 stmt = select(RequestLog).order_by(desc(RequestLog.timestamp))
@@ -350,10 +393,15 @@ def create_admin_interface():  # noqa: PLR0915
 
                 data = []
                 for log in logs:
+                    # Apply timezone offset to convert from UTC to browser local time
+                    adjusted_timestamp = log.timestamp.replace(tzinfo=None)
+                    adjusted_timestamp = adjusted_timestamp.replace(tzinfo=UTC)
+                    adjusted_timestamp = adjusted_timestamp + timedelta(minutes=tz_offset)
+
                     data.append(
                         [
                             log.id,
-                            log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                            adjusted_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                             log.method,
                             log.path,
                             log.status_code,
@@ -366,14 +414,24 @@ def create_admin_interface():  # noqa: PLR0915
                 path = save_json(data)
                 return gr.update(visible=True, value=path)
 
+        # Timezone dropdown change handler - updates state and refreshes table
+        def update_tz_state(tz_value):
+            return tz_value
+
+        tz_dropdown.change(update_tz_state, inputs=[tz_dropdown], outputs=[tz_offset_state]).then(
+            update_table,
+            inputs=[page_state, tz_offset_state],
+            outputs=[log_table, full_data_state, page_state, page_label],
+        )
+
         export_selected_btn.click(export_selected, inputs=[log_table, full_data_state], outputs=[download_file])
 
-        export_all_btn.click(export_all, inputs=[], outputs=[download_file])
+        export_all_btn.click(export_all, inputs=[tz_offset_state], outputs=[download_file])
 
         # Initial load
         demo.load(
             update_table,
-            inputs=[page_state],
+            inputs=[page_state, tz_offset_state],
             outputs=[log_table, full_data_state, page_state, page_label],
         )
 
