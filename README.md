@@ -3,7 +3,6 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0+-green.svg)](https://fastapi.tiangolo.com/)
-[![Gradio](https://img.shields.io/badge/Gradio-4.16.0+-orange.svg)](https://gradio.app/)
 
 A lightweight LLM (Large Language Model) proxy with comprehensive request logging and admin dashboard. This proxy allows you to intercept, log, and monitor all API requests to OpenAI-compatible services while maintaining full compatibility with the original API.
 
@@ -232,7 +231,6 @@ This proxy is compatible with OpenAI API specifications:
 
 Built with:
 - [FastAPI](https://fastapi.tiangolo.com/) - High-performance web framework
-- [Gradio](https://gradio.app/) - ML web UI library
 - [SQLAlchemy](https://www.sqlalchemy.org/) - Python SQL toolkit
 - [Uvicorn](https://www.uvicorn.org/) - Lightning-fast ASGI server
 

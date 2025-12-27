@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Proxier Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-main);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            stroke: white;
+        }
+
+        .title {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Controls Section */
+        .controls {
+            padding: 24px 32px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .select-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        select {
+            appearance: none;
+            padding: 10px 36px 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 160px;
+        }
+
+        select:hover {
+            border-color: var(--primary);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-secondary);
+            font-size: 10px;
+        }
+
+        .pagination {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-main);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Table Section */
+        .table-container {
+            padding: 24px 32px;
+            overflow-x: auto;
+        }
+
+        .table-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: var(--bg-main);
+            border-bottom: 2px solid var(--border);
+        }
+
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tbody tr {
+            transition: background 0.15s ease;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: #f1f5f9;
+        }
+
+        tbody tr.selected {
+            background: #e0e7ff;
+            border-left: 3px solid var(--primary);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+
+        .checkbox-cell input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .fail-indicator {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .method-GET {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .method-POST {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .method-PUT {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .method-DELETE {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .method-PATCH {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        .path-cell {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* Details Section */
+        .details-container {
+            padding: 24px 32px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .details-container.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .details-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .details-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .detail-card {
+            background: var(--bg-main);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .detail-card h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-content {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .detail-content.json {
+            color: #334155;
+        }
+
+        .detail-content.text {
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Loading & Empty States */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-table {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-table svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            border-left: 4px solid var(--primary);
+            min-width: 280px;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toast.success {
+            border-left-color: var(--success);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 16px 20px;
+            }
+
+            .title {
+                font-size: 22px;
+            }
+
+            .controls {
+                padding: 16px 20px;
+            }
+
+            .table-container {
+                padding: 16px 20px;
+            }
+
+            .pagination {
+                width: 100%;
+                justify-content: center;
+                margin-left: 0;
+                margin-top: 8px;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .path-cell {
+                max-width: 150px;
+            }
+
+            .details-container {
+                padding: 16px 20px;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .btn {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .logo {
+                width: 40px;
+                height: 40px;
+            }
+
+            .title {
+                font-size: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            select {
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .login-modal.active {
+            display: flex;
+        }
+
+        .login-card {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            width: 100%;
+            max-width: 400px;
+            animation: scaleIn 0.3s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .login-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .login-actions .btn {
+            flex: 1;
+        }
+
+        /* Copy Button Styles */
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.9);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .copy-btn:hover {
+            background: rgba(99, 102, 241, 1);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+        }
+
+        .detail-card {
+            position: relative;
+            background: var(--bg-main);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .detail-content {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            position: relative;
+            padding-top: 40px;
+            /* Space for copy button */
+        }
+
+        /* Export Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            width: 100%;
+            max-width: 500px;
+            animation: scaleIn 0.3s ease;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .download-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--success);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .download-link:hover {
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#grad1)"
+                            fill="none" />
+                    </svg>
+                </div>
+                <div class="title">LLM Proxier Admin</div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="app.refresh()">
+                    <span>🔄</span> 刷新
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <span style="color: var(--text-secondary); font-size: 14px; font-weight: 600;">
+                    🌍 时区: <span id="timezoneDisplay">UTC+00:00</span>
+                </span>
+                <button class="btn btn-primary" onclick="app.exportSelected()">
+                    <span>📥</span> 导出选中
+                </button>
+                <button class="btn btn-primary" onclick="app.exportAll()">
+                    <span>📦</span> 导出全部
+                </button>
+            </div>
+            <div class="pagination">
+                <button class="btn btn-secondary" onclick="app.prevPage()" id="prevBtn" style="padding: 6px 12px;">
+                    ←
+                </button>
+                <span id="pageLabel">第 1 页</span>
+                <button class="btn btn-secondary" onclick="app.nextPage()" id="nextBtn" style="padding: 6px 12px;">
+                    →
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <div class="table-card">
+                <table id="logTable">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-cell">
+                                <input type="checkbox" id="selectAll" onchange="app.toggleSelectAll()">
+                            </th>
+                            <th>ID</th>
+                            <th>时间戳</th>
+                            <th>方法</th>
+                            <th>路径</th>
+                            <th>状态</th>
+                            <th>失败</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+                <div id="emptyState" class="empty-table" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M8 15s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
+                    </svg>
+                    <p>暂无数据</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="details-container" id="detailsContainer">
+            <div class="details-header">
+                <div class="details-title">请求详情</div>
+                <button class="close-btn" onclick="app.closeDetails()">×</button>
+            </div>
+            <div class="details-grid">
+                <div class="detail-card">
+                    <h3>请求体 (Request Body)</h3>
+                    <button class="copy-btn" onclick="app.copyContent('requestBody', this)">复制</button>
+                    <div class="detail-content json" id="requestBody">暂无数据</div>
+                </div>
+                <div class="detail-card">
+                    <h3>响应体 (Response Body)</h3>
+                    <button class="copy-btn" onclick="app.copyContent('responseBody', this)">复制</button>
+                    <div class="detail-content" id="responseBody">暂无数据</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Login Modal -->
+    <div class="login-modal" id="loginModal">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-title">LLM Proxier Admin</div>
+                <div class="login-subtitle">请输入管理员凭证登录</div>
+            </div>
+            <form id="loginForm" onsubmit="app.handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-input" id="username" required placeholder="输入用户名">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="password" required placeholder="输入密码">
+                </div>
+                <div class="login-actions">
+                    <button type="submit" class="btn btn-primary">登录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal-card">
+            <div class="modal-header">导出完成</div>
+            <div class="modal-body" id="exportMessage">
+                文件已生成，请点击下方按钮下载。
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="app.closeExportModal()">关闭</button>
+                <a href="#" id="downloadLink" class="download-link" download>
+                    <span>⬇️</span> 下载文件
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            state: {
+                currentPage: 1,
+                totalPages: 1,
+                timezoneOffset: 0,
+                logs: [],
+                fullData: [],
+                selectedRows: new Set(),
+                isAuthenticated: false,
+                selectedDetailIndex: null,
+                sessionToken: null
+            },
+
+            init() {
+                // Auto-detect timezone
+                this.detectTimezone();
+                // Check session
+                this.checkSession();
+            },
+
+            detectTimezone() {
+                // Get browser timezone offset in minutes
+                const offset = new Date().getTimezoneOffset();
+                // Convert to UTC offset (positive for east of UTC)
+                const utcOffset = -offset;
+
+                this.state.timezoneOffset = utcOffset;
+
+                // Format display
+                const hours = Math.floor(Math.abs(utcOffset) / 60);
+                const minutes = Math.abs(utcOffset) % 60;
+                const sign = utcOffset >= 0 ? '+' : '-';
+                const formatted = `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+                document.getElementById('timezoneDisplay').textContent = formatted;
+
+                // this.showToast(`已自动检测时区: ${formatted}`, 'success');
+            },
+
+            async checkSession() {
+                const token = localStorage.getItem('admin_session');
+                if (!token) {
+                    this.showLoginModal();
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/admin/check', {
+                        headers: { 'X-Session-Token': token }
+                    });
+
+                    if (response.ok) {
+                        this.state.sessionToken = token;
+                        this.state.isAuthenticated = true;
+                        this.hideLoginModal();
+                        this.loadLogs();
+                    } else {
+                        localStorage.removeItem('admin_session');
+                        this.showLoginModal();
+                    }
+                } catch (error) {
+                    localStorage.removeItem('admin_session');
+                    this.showLoginModal();
+                }
+            },
+
+            async handleLogin(event) {
+                event.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                this.showLoading();
+
+                try {
+                    const response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.state.sessionToken = data.token;
+                        this.state.isAuthenticated = true;
+
+                        // Save session
+                        localStorage.setItem('admin_session', data.token);
+
+                        this.hideLoginModal();
+                        this.showToast('登录成功', 'success');
+                        this.loadLogs();
+                    } else {
+                        this.showToast('用户名或密码错误', 'error');
+                    }
+                } catch (error) {
+                    this.showToast('登录失败，请稍后重试', 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            copyContent(elementId, button) {
+                const content = document.getElementById(elementId).textContent;
+
+                if (content === '暂无数据') {
+                    this.showToast('没有内容可复制', 'warning');
+                    return;
+                }
+
+                navigator.clipboard.writeText(content).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = '已复制!';
+                    button.classList.add('copied');
+
+                    this.showToast('内容已复制到剪贴板', 'success');
+
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('copied');
+                    }, 2000);
+                }).catch(() => {
+                    this.showToast('复制失败', 'error');
+                });
+            },
+
+            showLoginModal() {
+                document.getElementById('loginModal').classList.add('active');
+            },
+
+            hideLoginModal() {
+                document.getElementById('loginModal').classList.remove('active');
+            },
+
+            showLoading() {
+                document.getElementById('loadingOverlay').classList.add('active');
+            },
+
+            hideLoading() {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            },
+
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+
+                const icons = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️'
+                };
+
+                toast.innerHTML = `
+                    <span class="toast-icon">${icons[type] || '📝'}</span>
+                    <span class="toast-message">${message}</span>
+                `;
+
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.animation = 'slideIn 0.3s ease reverse';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+
+            async loadLogs() {
+                this.showLoading();
+                try {
+                    const headers = {};
+                    if (this.state.sessionToken) {
+                        headers['X-Session-Token'] = this.state.sessionToken;
+                    }
+
+                    const response = await fetch(`/api/admin/logs?page=${this.state.currentPage}&tz=${this.state.timezoneOffset}`, {
+                        headers: headers
+                    });
+
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session');
+                        this.showLoginModal();
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    this.state.totalPages = data.total_pages;
+                    this.state.logs = data.logs;
+                    this.state.fullData = data.logs;
+
+                    this.renderTable();
+                    this.updatePagination();
+                } catch (error) {
+                    this.showToast('加载数据失败', 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            renderTable() {
+                const tbody = document.getElementById('tableBody');
+                const emptyState = document.getElementById('emptyState');
+
+                tbody.innerHTML = '';
+
+                if (this.state.logs.length === 0) {
+                    tbody.parentElement.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                tbody.parentElement.style.display = '';
+                emptyState.style.display = 'none';
+
+                this.state.logs.forEach((log, index) => {
+                    const row = document.createElement('tr');
+                    if (this.state.selectedDetailIndex === index) {
+                        row.classList.add('selected');
+                    }
+
+                    const isSelected = this.state.selectedRows.has(log.id);
+                    const failDisplay = log.fail ? '<span class="fail-indicator">🔴</span>' : '';
+                    const statusClass = log.status_code >= 200 && log.status_code < 300 ? 'status-success' : 'status-error';
+                    const methodClass = `method-${log.method}`;
+
+                    row.innerHTML = `
+                        <td class="checkbox-cell">
+                            <input type="checkbox" ${isSelected ? 'checked' : ''}
+                                   onchange="app.toggleRowSelection(${log.id}, ${index}, this.checked)"
+                                   onclick="event.stopPropagation()">
+                        </td>
+                        <td>${log.id}</td>
+                        <td>${log.timestamp}</td>
+                        <td><span class="method-badge ${methodClass}">${log.method}</span></td>
+                        <td class="path-cell" title="${log.path}">${log.path}</td>
+                        <td><span class="status-badge ${statusClass}">${log.status_code || '-'}</span></td>
+                        <td>${failDisplay}</td>
+                    `;
+
+                    row.onclick = () => this.showDetails(index);
+                    tbody.appendChild(row);
+                });
+
+                // Update select all checkbox
+                const selectAllCheckbox = document.getElementById('selectAll');
+                const allSelected = this.state.logs.length > 0 &&
+                    this.state.logs.every(log => this.state.selectedRows.has(log.id));
+                selectAllCheckbox.checked = allSelected;
+            },
+
+            updatePagination() {
+                document.getElementById('pageLabel').textContent = `第 ${this.state.currentPage} 页 / 共 ${this.state.totalPages} 页`;
+                document.getElementById('prevBtn').disabled = this.state.currentPage <= 1;
+                document.getElementById('nextBtn').disabled = this.state.currentPage >= this.state.totalPages;
+            },
+
+            prevPage() {
+                if (this.state.currentPage > 1) {
+                    this.state.currentPage--;
+                    this.loadLogs();
+                }
+            },
+
+            nextPage() {
+                if (this.state.currentPage < this.state.totalPages) {
+                    this.state.currentPage++;
+                    this.loadLogs();
+                }
+            },
+
+            refresh() {
+                this.loadLogs();
+            },
+
+            toggleRowSelection(id, index, checked) {
+                if (checked) {
+                    this.state.selectedRows.add(id);
+                } else {
+                    this.state.selectedRows.delete(id);
+                }
+                this.renderTable();
+            },
+
+            toggleSelectAll() {
+                const selectAllCheckbox = document.getElementById('selectAll');
+                const isChecked = selectAllCheckbox.checked;
+
+                if (isChecked) {
+                    this.state.logs.forEach(log => this.state.selectedRows.add(log.id));
+                } else {
+                    this.state.logs.forEach(log => this.state.selectedRows.delete(log.id));
+                }
+
+                this.renderTable();
+            },
+
+            async showDetails(index) {
+                this.state.selectedDetailIndex = index;
+                const log = this.state.logs[index];
+
+                // Update selected row styling
+                this.renderTable();
+
+                const requestBody = document.getElementById('requestBody');
+                const responseBody = document.getElementById('responseBody');
+                const detailsContainer = document.getElementById('detailsContainer');
+
+                // Format request body
+                if (log.request_body) {
+                    try {
+                        requestBody.textContent = JSON.stringify(log.request_body, null, 2);
+                        requestBody.className = 'detail-content json';
+                    } catch (e) {
+                        requestBody.textContent = String(log.request_body);
+                        requestBody.className = 'detail-content text';
+                    }
+                } else {
+                    requestBody.textContent = '暂无数据';
+                    requestBody.className = 'detail-content text';
+                }
+
+                // Format response body
+                if (log.response_body) {
+                    // Check if it's SSE format
+                    const parsed = this.parseStreamingResponse(log.response_body);
+                    if (parsed) {
+                        try {
+                            responseBody.textContent = JSON.stringify(parsed, null, 2);
+                            responseBody.className = 'detail-content json';
+                        } catch (e) {
+                            responseBody.textContent = log.response_body;
+                            responseBody.className = 'detail-content text';
+                        }
+                    } else {
+                        // Try to parse as JSON
+                        try {
+                            const json = JSON.parse(log.response_body);
+                            responseBody.textContent = JSON.stringify(json, null, 2);
+                            responseBody.className = 'detail-content json';
+                        } catch (e) {
+                            responseBody.textContent = log.response_body;
+                            responseBody.className = 'detail-content text';
+                        }
+                    }
+                } else {
+                    responseBody.textContent = '暂无数据';
+                    responseBody.className = 'detail-content text';
+                }
+
+                detailsContainer.classList.add('active');
+            },
+
+            closeDetails() {
+                document.getElementById('detailsContainer').classList.remove('active');
+                this.state.selectedDetailIndex = null;
+                this.renderTable();
+            },
+
+            parseStreamingResponse(responseBody) {
+                if (!responseBody || typeof responseBody !== 'string') {
+                    return null;
+                }
+
+                if (!responseBody.startsWith('data: ') || !responseBody.includes('\n\n')) {
+                    return null;
+                }
+
+                const lines = responseBody.split('\n\n');
+                const chunks = [];
+
+                for (const line of lines) {
+                    const stripped = line.trim();
+                    if (!stripped) continue;
+                    if (!stripped.startsWith('data: ')) return null;
+
+                    const jsonStr = stripped.slice(6).trim();
+                    if (jsonStr === '[DONE]') continue;
+
+                    try {
+                        const chunk = JSON.parse(jsonStr);
+                        if (typeof chunk === 'object' || Array.isArray(chunk)) {
+                            chunks.push(chunk);
+                        } else {
+                            return null;
+                        }
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                return chunks.length > 0 ? chunks : null;
+            },
+
+            async exportSelected() {
+                if (this.state.selectedRows.size === 0) {
+                    this.showToast('请先选择要导出的记录', 'warning');
+                    return;
+                }
+
+                this.showLoading();
+
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (this.state.sessionToken) {
+                        headers['X-Session-Token'] = this.state.sessionToken;
+                    }
+
+                    const response = await fetch('/api/admin/export/selected', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({
+                            ids: Array.from(this.state.selectedRows),
+                            tz: this.state.timezoneOffset
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.showExportModal(data.download_url);
+                    } else if (response.status === 401) {
+                        localStorage.removeItem('admin_session');
+                        this.showLoginModal();
+                    } else {
+                        this.showToast('导出失败', 'error');
+                    }
+                } catch (error) {
+                    this.showToast('导出失败，请稍后重试', 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            async exportAll() {
+                this.showLoading();
+
+                try {
+                    const headers = {};
+                    if (this.state.sessionToken) {
+                        headers['X-Session-Token'] = this.state.sessionToken;
+                    }
+
+                    const response = await fetch(`/api/admin/export/all?tz=${this.state.timezoneOffset}`, {
+                        headers: headers
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.showExportModal(data.download_url);
+                    } else if (response.status === 401) {
+                        localStorage.removeItem('admin_session');
+                        this.showLoginModal();
+                    } else {
+                        this.showToast('导出失败', 'error');
+                    }
+                } catch (error) {
+                    this.showToast('导出失败，请稍后重试', 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            showExportModal(downloadUrl) {
+                const modal = document.getElementById('exportModal');
+                const link = document.getElementById('downloadLink');
+
+                // Remove any existing event listeners by cloning the link
+                const newLink = link.cloneNode(true);
+                link.parentNode.replaceChild(newLink, link);
+
+                // Add click handler to download with auth
+                newLink.href = '#';
+                newLink.onclick = (e) => {
+                    e.preventDefault();
+                    this.downloadFileWithAuth(downloadUrl);
+                };
+
+                newLink.download = `export_${Date.now()}.json`;
+                modal.classList.add('active');
+            },
+
+            async downloadFileWithAuth(url) {
+                this.showLoading();
+                try {
+                    const headers = {};
+                    if (this.state.sessionToken) {
+                        headers['X-Session-Token'] = this.state.sessionToken;
+                    }
+
+                    const response = await fetch(url, { headers });
+
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session');
+                        this.showLoginModal();
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        this.showToast('下载失败', 'error');
+                        return;
+                    }
+
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `export_${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+
+                    this.showToast('下载开始', 'success');
+                } catch (error) {
+                    this.showToast('下载失败，请稍后重试', 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            closeExportModal() {
+                document.getElementById('exportModal').classList.remove('active');
+            }
+        };
+
+        // Initialize app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+
+</html>
