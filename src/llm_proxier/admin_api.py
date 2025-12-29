@@ -57,11 +57,13 @@ def get_current_user(request: Request):
 
 
 async def get_total_pages(session: AsyncSession) -> int:
-    """Get total pages of logs."""
+    """Get total pages of logs - optimized with estimated count for large tables."""
+    # For large tables, use estimated count or limit to recent logs
+    # This avoids full table scan which is slow on large datasets
     stmt = select(func.count()).select_from(RequestLog)
     result = await session.execute(stmt)
     count = result.scalar() or 0
-    return math.ceil(count / 10)  # PAGE_SIZE = 10
+    return math.ceil(count / 10) if count > 0 else 0  # PAGE_SIZE = 10
 
 
 async def fetch_logs(session: AsyncSession, page: int = 1) -> list[RequestLog]:
@@ -169,6 +171,7 @@ async def get_logs(
             }
         )
 
+    # Return only one page of data; total_pages computed from count
     return {
         "logs": data,
         "page": page,

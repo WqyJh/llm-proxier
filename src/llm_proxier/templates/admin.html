@@ -1233,9 +1233,11 @@
 
                     const data = await response.json();
 
-                    this.state.totalPages = data.total_pages;
-                    this.state.logs = data.logs;
-                    this.state.fullData = data.logs;
+                    // Server returns only one page of data
+                    this.state.totalPages = data.total_pages || 1;
+                    this.state.logs = data.logs || [];
+                    // Do not store full dataset; rely on pagination
+                    this.state.fullData = [];
 
                     this.renderTable();
                     this.updatePagination();

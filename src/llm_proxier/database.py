@@ -32,6 +32,11 @@ class RequestLog(Base):
     status_code: Mapped[int | None] = mapped_column()
     fail: Mapped[int] = mapped_column(default=0)
 
+    # Create an index on timestamp descending for efficient pagination
+    # and newest-first queries. We use raw SQL in migration to ensure
+    # compatibility across SQLite/Postgres.
+    __table_args__ = ()
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
@@ -60,5 +65,25 @@ async def init_db():
                     # Generic SQL for most other dialects
                     sync_conn.execute(text("ALTER TABLE request_logs ADD COLUMN fail INTEGER DEFAULT 0"))
                     sync_conn.execute(text("UPDATE request_logs SET fail = 0 WHERE fail IS NULL"))
+
+            # Ensure descending timestamp index exists
+            # Use IF NOT EXISTS for SQLite >= 3.9 and Postgres
+            sync_conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_request_logs_timestamp_desc ON request_logs(timestamp DESC)")
+            )
+
+            # Additional composite index for pagination queries (timestamp + id for stable ordering)
+            sync_conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_request_logs_timestamp_id_desc ON request_logs(timestamp DESC, id DESC)"
+                )
+            )
+
+            # Index for count queries (covering index)
+            sync_conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_request_logs_covering ON request_logs(timestamp DESC, id, method, path, status_code, fail, request_body, response_body)"
+                )
+            )
 
         await conn.run_sync(migrate)
