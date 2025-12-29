@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import dataclass
 
@@ -8,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from llm_proxier.config import settings
 from llm_proxier.database import RequestLog, async_session
+
+# Global set to track background logging tasks for graceful shutdown/cancellation
+_BG_TASKS: set[asyncio.Task] = set()
 
 router = APIRouter()
 
@@ -64,9 +68,37 @@ async def verify_api_key(request: Request):
 
 
 async def log_interaction(db: AsyncSession, data: LogData):
-    log_entry = RequestLog(**data.__dict__)
-    db.add(log_entry)
-    await db.commit()
+    """Safely log interactions with error handling"""
+    try:
+        log_entry = RequestLog(**data.__dict__)
+        db.add(log_entry)
+        await db.commit()
+    except Exception as e:
+        # Record error without raising to avoid affecting request flow
+        print(f"⚠️ Log storage failed: {e}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass  # Rollback may also fail
+
+
+async def _background_log_task(data: LogData):
+    """Background logging task with independent DB session"""
+    try:
+        # Use shield to protect task from cancellation
+        async with async_session() as session:
+            await asyncio.shield(log_interaction(session, data))
+    except asyncio.CancelledError:
+        # Task cancelled, attempt final record
+        print(f"⚠️ Background log task cancelled, attempting final record: {data.method} {data.path}")
+        try:
+            async with async_session() as session:
+                await log_interaction(session, data)
+        except Exception:
+            print(f"❌ Final record failed: {data.method} {data.path}")
+    except Exception as e:
+        # Other exceptions
+        print(f"⚠️ Background log task failed: {e}")
 
 
 async def _proxy_request(path: str, request: Request, upstream_prefix: str = "/v1"):
@@ -91,7 +123,7 @@ async def _proxy_request(path: str, request: Request, upstream_prefix: str = "/v
         "Content-Type": "application/json",
     }
 
-    # 根据上游路径前缀设置不同的认证头
+    # Set auth headers based on upstream prefix
     if settings.UPSTREAM_API_KEY:
         if upstream_prefix == "/anthropic":
             headers["api-key"] = settings.UPSTREAM_API_KEY
@@ -125,20 +157,28 @@ async def _proxy_request(path: str, request: Request, upstream_prefix: str = "/v
             response_text = b"".join(full_response).decode("utf-8", errors="replace")
             fail_flag = 1 if r.status_code >= HTTP_STATUS_BAD_REQUEST else 0
 
-            # Log
-            # Create a new session to ensure thread safety and scope validity
-            async with async_session() as session:
-                await log_interaction(
-                    session,
-                    LogData(
-                        method=request.method,
-                        path=path,
-                        request_body=request_json,
-                        response_body=response_text,
-                        status_code=r.status_code,
-                        fail=fail_flag,
-                    ),
-                )
+            # Use create_task to move logging to background
+            # Ensures logs are stored even if client disconnects
+            log_data = LogData(
+                method=request.method,
+                path=path,
+                request_body=request_json,
+                response_body=response_text,
+                status_code=r.status_code,
+                fail=fail_flag,
+            )
+
+            # Create background task without waiting and store reference
+            # Use try-catch to prevent task creation failure from affecting main flow
+            try:
+                # Create task and store reference to satisfy linter RUF006
+                _bg_task = asyncio.create_task(_background_log_task(log_data))
+                # Track task for management and graceful shutdown
+                _BG_TASKS.add(_bg_task)
+                # Remove from set when done to avoid memory leak
+                _bg_task.add_done_callback(lambda t: _BG_TASKS.discard(t))
+            except Exception as e:
+                print(f"⚠️ Failed to create background log task: {e}")
 
     return StreamingResponse(
         stream_wrapper(),

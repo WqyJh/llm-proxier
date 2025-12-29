@@ -7,8 +7,26 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from llm_proxier.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
-async_session = async_sessionmaker(engine, expire_on_commit=False)
+# 配置连接池参数以提高稳定性和性能
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=False,
+    # 连接池配置
+    pool_size=10,  # 连接池大小
+    max_overflow=20,  # 最大溢出连接
+    pool_timeout=30,  # 获取连接超时时间(秒)
+    pool_recycle=3600,  # 连接回收时间(秒)
+    pool_pre_ping=True,  # 预检查连接有效性
+    # SQLite 特定配置
+    connect_args={
+        "check_same_thread": False,  # 允许跨线程使用连接
+        "timeout": 30,  # 查询超时
+    }
+    if "sqlite" in settings.DATABASE_URL
+    else {},
+)
+
+async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
 class Base(DeclarativeBase):
