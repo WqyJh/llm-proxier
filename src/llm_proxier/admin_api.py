@@ -17,6 +17,11 @@ from llm_proxier.database import RequestLog, async_session
 
 router = APIRouter(prefix="/api/admin")
 
+# Pagination constants
+MIN_PAGE_SIZE = 1
+MAX_PAGE_SIZE = 100
+DEFAULT_PAGE_SIZE = 10
+
 # Simple in-memory session store (in production, use Redis or database)
 _active_sessions = {}
 
@@ -56,20 +61,20 @@ def get_current_user(request: Request):
     return _active_sessions[token]["username"]
 
 
-async def get_total_pages(session: AsyncSession) -> int:
+async def get_total_pages(session: AsyncSession, page_size: int = DEFAULT_PAGE_SIZE) -> int:
     """Get total pages of logs - optimized with estimated count for large tables."""
     # For large tables, use estimated count or limit to recent logs
     # This avoids full table scan which is slow on large datasets
     stmt = select(func.count()).select_from(RequestLog)
     result = await session.execute(stmt)
     count = result.scalar() or 0
-    return math.ceil(count / 10) if count > 0 else 0  # PAGE_SIZE = 10
+    return math.ceil(count / page_size) if count > 0 else 0
 
 
-async def fetch_logs(session: AsyncSession, page: int = 1) -> list[RequestLog]:
+async def fetch_logs(session: AsyncSession, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE) -> list[RequestLog]:
     """Fetch logs for a specific page."""
-    offset = (page - 1) * 10
-    stmt = select(RequestLog).order_by(desc(RequestLog.timestamp)).offset(offset).limit(10)
+    offset = (page - 1) * page_size
+    stmt = select(RequestLog).order_by(desc(RequestLog.timestamp)).offset(offset).limit(page_size)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -132,15 +137,20 @@ async def login(request: Request):
 async def get_logs(
     request: Request,
     page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
     tz: int = 0,
 ):
     """Get paginated logs with timezone adjustment."""
     # Verify session
     get_current_user(request)
 
+    # Validate page_size
+    if page_size < MIN_PAGE_SIZE or page_size > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"page_size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}")
+
     async with async_session() as session:
-        total_pages = await get_total_pages(session)
-        logs = await fetch_logs(session, page)
+        total_pages = await get_total_pages(session, page_size)
+        logs = await fetch_logs(session, page, page_size)
 
     if not logs:
         return {

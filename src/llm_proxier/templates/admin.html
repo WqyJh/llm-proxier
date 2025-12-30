@@ -210,17 +210,194 @@
             font-size: 10px;
         }
 
-        .pagination {
+        /* Enhanced Pagination */
+        .pagination-container {
             margin-left: auto;
             display: flex;
-            gap: 8px;
             align-items: center;
+            gap: 12px;
             padding: 8px 12px;
             background: var(--bg-main);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .pagination {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .pagination-btn {
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-primary);
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .pagination-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .pagination-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .pagination-btn.icon {
+            padding: 0 8px;
+            font-size: 16px;
+            min-width: 36px;
+        }
+
+        .pagination-ellipsis {
+            padding: 0 8px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .pagination-info {
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-secondary);
+            padding: 0 8px;
+            white-space: nowrap;
+        }
+
+        .pagination-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 8px;
+            padding-left: 8px;
+            border-left: 1px solid var(--border);
+        }
+
+        .pagination-input {
+            width: 50px;
+            height: 32px;
+            text-align: center;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .pagination-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .pagination-jump-btn {
+            height: 32px;
+            padding: 0 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination-jump-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 8px;
+            padding-left: 8px;
+            border-left: 1px solid var(--border);
+        }
+
+        .page-size-selector label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .page-size-selector select {
+            height: 32px;
+            padding: 0 8px;
+            font-size: 13px;
+            min-width: 60px;
+            border-radius: 6px;
+        }
+
+        /* Mobile pagination styles */
+        @media (max-width: 768px) {
+            .pagination-container {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 8px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .pagination-btn {
+                min-width: 32px;
+                height: 32px;
+                padding: 0 8px;
+                font-size: 12px;
+            }
+
+            .pagination-input-group,
+            .page-size-selector {
+                border-left: none;
+                margin-left: 0;
+                padding-left: 0;
+                width: 100%;
+                justify-content: center;
+                margin-top: 4px;
+            }
+
+            .pagination-info {
+                width: 100%;
+                text-align: center;
+                margin-top: 4px;
+            }
         }
 
         /* Table Section */
@@ -936,14 +1113,26 @@
                     <span>📦</span> 导出全部
                 </button>
             </div>
-            <div class="pagination">
-                <button class="btn btn-secondary" onclick="app.prevPage()" id="prevBtn" style="padding: 6px 12px;">
-                    ←
-                </button>
-                <span id="pageLabel">第 1 页</span>
-                <button class="btn btn-secondary" onclick="app.nextPage()" id="nextBtn" style="padding: 6px 12px;">
-                    →
-                </button>
+            <div class="pagination-container">
+                <div class="pagination" id="pagination">
+                    <!-- Pagination buttons will be dynamically generated -->
+                </div>
+                <div class="pagination-info" id="pageInfo">
+                    第 1 页 / 共 1 页
+                </div>
+                <div class="pagination-input-group">
+                    <input type="number" class="pagination-input" id="pageInput" min="1" value="1" placeholder="页码" onkeydown="app.handlePageInputKeydown(event)">
+                    <button class="pagination-jump-btn" onclick="app.jumpToPage()">跳转</button>
+                </div>
+                <div class="page-size-selector">
+                    <label>每页</label>
+                    <select id="pageSize" onchange="app.changePageSize()">
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label>条</label>
+                </div>
             </div>
         </div>
 
@@ -1052,6 +1241,7 @@
             state: {
                 currentPage: 1,
                 totalPages: 1,
+                pageSize: 20,
                 timezoneOffset: 0,
                 logs: [],
                 fullData: [],
@@ -1066,6 +1256,15 @@
                 this.detectTimezone();
                 // Check session
                 this.checkSession();
+                // Load saved page size preference
+                const savedPageSize = localStorage.getItem('admin_page_size');
+                if (savedPageSize) {
+                    this.state.pageSize = parseInt(savedPageSize);
+                    const pageSizeSelect = document.getElementById('pageSize');
+                    if (pageSizeSelect) {
+                        pageSizeSelect.value = savedPageSize;
+                    }
+                }
             },
 
             detectTimezone() {
@@ -1221,7 +1420,7 @@
                         headers['X-Session-Token'] = this.state.sessionToken;
                     }
 
-                    const response = await fetch(`/api/admin/logs?page=${this.state.currentPage}&tz=${this.state.timezoneOffset}`, {
+                    const response = await fetch(`/api/admin/logs?page=${this.state.currentPage}&page_size=${this.state.pageSize}&tz=${this.state.timezoneOffset}`, {
                         headers: headers
                     });
 
@@ -1299,24 +1498,171 @@
                 selectAllCheckbox.checked = allSelected;
             },
 
+            // Generate pagination buttons with smart display
+            generatePaginationButtons() {
+                const pagination = document.getElementById('pagination');
+                const { currentPage, totalPages } = this.state;
+
+                pagination.innerHTML = '';
+
+                if (totalPages <= 1) {
+                    return; // No pagination needed
+                }
+
+                // Helper function to create button
+                const createButton = (text, page, isActive = false, isDisabled = false, icon = false) => {
+                    const btn = document.createElement('button');
+                    btn.className = `pagination-btn ${icon ? 'icon' : ''} ${isActive ? 'active' : ''}`;
+                    btn.textContent = text;
+                    btn.disabled = isDisabled;
+
+                    if (!isDisabled && !isActive) {
+                        btn.onclick = () => this.goToPage(page);
+                    }
+
+                    return btn;
+                };
+
+                // First page button
+                if (totalPages > 1) {
+                    pagination.appendChild(createButton('«', 1, currentPage === 1, currentPage === 1));
+                }
+
+                // Previous button
+                pagination.appendChild(createButton('‹', currentPage - 1, false, currentPage <= 1, true));
+
+                // Smart page number display
+                const pages = this.getSmartPageNumbers();
+                pages.forEach(page => {
+                    if (page === '...') {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.className = 'pagination-ellipsis';
+                        ellipsis.textContent = '...';
+                        pagination.appendChild(ellipsis);
+                    } else {
+                        pagination.appendChild(createButton(page.toString(), page, currentPage === page));
+                    }
+                });
+
+                // Next button
+                pagination.appendChild(createButton('›', currentPage + 1, false, currentPage >= totalPages, true));
+
+                // Last page button
+                if (totalPages > 1) {
+                    pagination.appendChild(createButton('»', totalPages, currentPage === totalPages, currentPage === totalPages));
+                }
+            },
+
+            // Calculate smart page numbers to show
+            getSmartPageNumbers() {
+                const { currentPage, totalPages } = this.state;
+                const delta = 2; // Number of pages to show on each side of current page
+                const range = [];
+                const rangeWithEllipsis = [];
+
+                // Build range of pages to show
+                for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                    range.push(i);
+                }
+
+                // Add first page if needed
+                if (currentPage - delta > 1) {
+                    rangeWithEllipsis.push(1);
+                    if (currentPage - delta > 2) {
+                        rangeWithEllipsis.push('...');
+                    }
+                }
+
+                // Add middle pages
+                rangeWithEllipsis.push(...range);
+
+                // Add last page if needed
+                if (currentPage + delta < totalPages) {
+                    if (currentPage + delta < totalPages - 1) {
+                        rangeWithEllipsis.push('...');
+                    }
+                    rangeWithEllipsis.push(totalPages);
+                }
+
+                return rangeWithEllipsis;
+            },
+
+            // Update pagination info and controls
             updatePagination() {
-                document.getElementById('pageLabel').textContent = `第 ${this.state.currentPage} 页 / 共 ${this.state.totalPages} 页`;
-                document.getElementById('prevBtn').disabled = this.state.currentPage <= 1;
-                document.getElementById('nextBtn').disabled = this.state.currentPage >= this.state.totalPages;
+                const pageInfo = document.getElementById('pageInfo');
+                const pageInput = document.getElementById('pageInput');
+
+                // Update page info text
+                pageInfo.textContent = `第 ${this.state.currentPage} 页 / 共 ${this.state.totalPages} 页`;
+
+                // Update input value
+                if (pageInput) {
+                    pageInput.value = this.state.currentPage;
+                    pageInput.max = this.state.totalPages;
+                }
+
+                // Generate pagination buttons
+                this.generatePaginationButtons();
             },
 
+            // Go to specific page
+            goToPage(page) {
+                if (page >= 1 && page <= this.state.totalPages && page !== this.state.currentPage) {
+                    this.state.currentPage = page;
+                    this.loadLogs();
+                }
+            },
+
+            // Previous page
             prevPage() {
-                if (this.state.currentPage > 1) {
-                    this.state.currentPage--;
-                    this.loadLogs();
+                this.goToPage(this.state.currentPage - 1);
+            },
+
+            // Next page
+            nextPage() {
+                this.goToPage(this.state.currentPage + 1);
+            },
+
+            // Jump to page from input
+            jumpToPage() {
+                const input = document.getElementById('pageInput');
+                const page = parseInt(input.value);
+
+                if (isNaN(page) || page < 1) {
+                    this.showToast('请输入有效的页码', 'warning');
+                    input.value = this.state.currentPage;
+                    return;
+                }
+
+                if (page > this.state.totalPages) {
+                    this.showToast(`页码不能超过 ${this.state.totalPages}`, 'warning');
+                    input.value = this.state.currentPage;
+                    return;
+                }
+
+                this.goToPage(page);
+            },
+
+            // Handle Enter key in page input
+            handlePageInputKeydown(event) {
+                if (event.key === 'Enter') {
+                    this.jumpToPage();
                 }
             },
 
-            nextPage() {
-                if (this.state.currentPage < this.state.totalPages) {
-                    this.state.currentPage++;
-                    this.loadLogs();
-                }
+            // Change page size
+            changePageSize() {
+                const select = document.getElementById('pageSize');
+                const newSize = parseInt(select.value);
+
+                this.state.pageSize = newSize;
+                this.state.currentPage = 1; // Reset to first page
+
+                // Save preference
+                localStorage.setItem('admin_page_size', newSize);
+
+                this.loadLogs();
+                this.showToast(`已切换到每页 ${newSize} 条`, 'success');
             },
 
             refresh() {
