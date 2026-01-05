@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ALLOW_ORIGINS: list[str] = ["*"]
 
+    # Log Persistence
+    LOG_PERSIST: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

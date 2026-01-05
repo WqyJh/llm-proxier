@@ -8,3 +8,6 @@ __pycache__/
 htmlcov/
 .ruff_cache/
 llm_proxier.db
+data/
+docs/
+start.sh

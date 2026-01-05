@@ -159,26 +159,28 @@ async def _proxy_request(path: str, request: Request, upstream_prefix: str = "/v
 
             # Use create_task to move logging to background
             # Ensures logs are stored even if client disconnects
-            log_data = LogData(
-                method=request.method,
-                path=path,
-                request_body=request_json,
-                response_body=response_text,
-                status_code=r.status_code,
-                fail=fail_flag,
-            )
+            # Only persist logs if LOG_PERSIST is enabled
+            if settings.LOG_PERSIST:
+                log_data = LogData(
+                    method=request.method,
+                    path=path,
+                    request_body=request_json,
+                    response_body=response_text,
+                    status_code=r.status_code,
+                    fail=fail_flag,
+                )
 
-            # Create background task without waiting and store reference
-            # Use try-catch to prevent task creation failure from affecting main flow
-            try:
-                # Create task and store reference to satisfy linter RUF006
-                _bg_task = asyncio.create_task(_background_log_task(log_data))
-                # Track task for management and graceful shutdown
-                _BG_TASKS.add(_bg_task)
-                # Remove from set when done to avoid memory leak
-                _bg_task.add_done_callback(lambda t: _BG_TASKS.discard(t))
-            except Exception as e:
-                print(f"⚠️ Failed to create background log task: {e}")
+                # Create background task without waiting and store reference
+                # Use try-catch to prevent task creation failure from affecting main flow
+                try:
+                    # Create task and store reference to satisfy linter RUF006
+                    _bg_task = asyncio.create_task(_background_log_task(log_data))
+                    # Track task for management and graceful shutdown
+                    _BG_TASKS.add(_bg_task)
+                    # Remove from set when done to avoid memory leak
+                    _bg_task.add_done_callback(lambda t: _BG_TASKS.discard(t))
+                except Exception as e:
+                    print(f"⚠️ Failed to create background log task: {e}")
 
     return StreamingResponse(
         stream_wrapper(),
