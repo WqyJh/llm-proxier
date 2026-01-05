@@ -61,8 +61,36 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def init_db():
-    async with engine.begin() as conn:
+async def init_db(test_engine=None):
+    """Initialize database with schema, migrations, and FTS5 full-text search.
+
+    This function performs the following operations:
+
+    1. Creates database tables based on SQLAlchemy models
+    2. Runs idempotent migrations (adds missing columns)
+    3. Creates indexes for performance optimization
+    4. Sets up FTS5 virtual table for full-text search
+    5. Creates triggers to auto-sync FTS index with main table
+
+    FTS5 Architecture:
+    - request_logs: Main table storing log data
+    - request_logs_fts: Virtual table storing search index (created automatically)
+    - Triggers: Automatically maintain sync between main table and FTS index
+
+    Searchable fields: request_body, response_body, path, method
+
+    The FTS5 implementation uses:
+    - unicode61 tokenizer: Supports Chinese and Unicode text
+    - External content: References main table to avoid data duplication
+    - Automatic triggers: INSERT, UPDATE, DELETE operations
+
+    See docs/design/fts.md for detailed design documentation.
+
+    Args:
+        test_engine: Optional engine for testing. If provided, uses this instead of global engine.
+    """
+    use_engine = test_engine if test_engine is not None else engine
+    async with use_engine.begin() as conn:
         # Create tables if they don't exist
         await conn.run_sync(Base.metadata.create_all)
 
@@ -103,5 +131,86 @@ async def init_db():
                     "CREATE INDEX IF NOT EXISTS ix_request_logs_covering ON request_logs(timestamp DESC, id, method, path, status_code, fail, request_body, response_body)"
                 )
             )
+
+            # FTS5 Full-Text Search setup
+            # Check if FTS5 virtual table exists
+            try:
+                sync_conn.execute(text("SELECT 1 FROM request_logs_fts LIMIT 1"))
+                fts_exists = True
+            except Exception:
+                fts_exists = False
+
+            if not fts_exists:
+                # Create FTS5 virtual table
+                # Using unicode61 tokenizer for Chinese support
+                sync_conn.execute(
+                    text(
+                        """
+                    CREATE VIRTUAL TABLE IF NOT EXISTS request_logs_fts USING fts5(
+                        request_body,
+                        response_body,
+                        path,
+                        method,
+                        content='request_logs',
+                        content_rowid='id',
+                        tokenize='unicode61'
+                    )
+                """
+                    )
+                )
+
+                # Create triggers to keep FTS index in sync with main table
+                # After INSERT
+                sync_conn.execute(
+                    text(
+                        """
+                    CREATE TRIGGER IF NOT EXISTS request_logs_ai AFTER INSERT ON request_logs BEGIN
+                        INSERT INTO request_logs_fts(rowid, request_body, response_body, path, method)
+                        VALUES (new.id, new.request_body, new.response_body, new.path, new.method);
+                    END;
+                """
+                    )
+                )
+
+                # After UPDATE
+                sync_conn.execute(
+                    text(
+                        """
+                    CREATE TRIGGER IF NOT EXISTS request_logs_au AFTER UPDATE ON request_logs BEGIN
+                        DELETE FROM request_logs_fts WHERE rowid=old.id;
+                        INSERT INTO request_logs_fts(rowid, request_body, response_body, path, method)
+                        VALUES (new.id, new.request_body, new.response_body, new.path, new.method);
+                    END;
+                """
+                    )
+                )
+
+                # After DELETE
+                # Note: FTS5 with external content has a known issue where internal
+                # tables (_docsize, _idx) don't get cleaned up properly on DELETE.
+                # We call 'rebuild' to clean up orphaned entries and keep the index consistent.
+                # See: https://www.sqlite.org/fts5.html#external_content_tables
+                sync_conn.execute(
+                    text(
+                        """
+                    CREATE TRIGGER IF NOT EXISTS request_logs_ad AFTER DELETE ON request_logs BEGIN
+                        DELETE FROM request_logs_fts WHERE rowid=old.id;
+                        -- Rebuild to clean up orphaned internal entries
+                        INSERT INTO request_logs_fts(request_logs_fts) VALUES('rebuild');
+                    END;
+                """
+                    )
+                )
+
+                # Populate existing data into FTS index
+                sync_conn.execute(
+                    text(
+                        """
+                    INSERT INTO request_logs_fts(rowid, request_body, response_body, path, method)
+                    SELECT id, request_body, response_body, path, method FROM request_logs
+                    WHERE id NOT IN (SELECT rowid FROM request_logs_fts)
+                """
+                    )
+                )
 
         await conn.run_sync(migrate)

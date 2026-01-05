@@ -164,6 +164,84 @@
             align-items: center;
         }
 
+        /* Search Box */
+        .search-container {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 32px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            display: none;
+            font-size: 16px;
+        }
+
+        .search-clear.visible {
+            display: block;
+        }
+
+        .search-clear:hover {
+            color: var(--danger);
+        }
+
+        .search-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 4px 8px;
+            background: var(--bg-main);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .search-info.visible {
+            display: inline-block;
+        }
+
+        .search-info.highlight {
+            background: #e0e7ff;
+            color: var(--primary);
+        }
+
         .control-group {
             display: flex;
             gap: 8px;
@@ -1102,6 +1180,12 @@
 
         <!-- Controls -->
         <div class="controls">
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索请求/响应内容、路径、方法..." oninput="app.handleSearchInput()">
+                <span class="search-icon">🔍</span>
+                <button class="search-clear" id="searchClear" onclick="app.clearSearch()">×</button>
+            </div>
+            <span class="search-info" id="searchInfo"></span>
             <div class="control-group">
                 <span style="color: var(--text-secondary); font-size: 14px; font-weight: 600;">
                     🌍 时区: <span id="timezoneDisplay">UTC+00:00</span>
@@ -1248,7 +1332,10 @@
                 selectedRows: new Set(),
                 isAuthenticated: false,
                 selectedDetailIndex: null,
-                sessionToken: null
+                sessionToken: null,
+                searchQuery: '',
+                searchTimeout: null,
+                isSearching: false
             },
 
             init() {
@@ -1284,6 +1371,98 @@
                 document.getElementById('timezoneDisplay').textContent = formatted;
 
                 // this.showToast(`已自动检测时区: ${formatted}`, 'success');
+            },
+
+            // Search functionality
+            handleSearchInput() {
+                const searchInput = document.getElementById('searchInput');
+                const searchClear = document.getElementById('searchClear');
+                const searchInfo = document.getElementById('searchInfo');
+                const query = searchInput.value.trim();
+
+                // Show/hide clear button
+                if (query.length > 0) {
+                    searchClear.classList.add('visible');
+                } else {
+                    searchClear.classList.remove('visible');
+                }
+
+                // Clear existing timeout
+                if (this.state.searchTimeout) {
+                    clearTimeout(this.state.searchTimeout);
+                }
+
+                // Update state
+                this.state.searchQuery = query;
+                this.state.currentPage = 1; // Reset to first page on new search
+
+                // Debounced search execution
+                if (query.length === 0) {
+                    // No search - clear search info and load all logs
+                    searchInfo.classList.remove('visible', 'highlight');
+                    searchInfo.textContent = '';
+                    this.loadLogs();
+                    return;
+                }
+
+                // Show searching indicator after a short delay
+                this.state.searchTimeout = setTimeout(() => {
+                    this.performSearch(query);
+                }, 300); // 300ms debounce
+            },
+
+            async performSearch(query) {
+                const searchInfo = document.getElementById('searchInfo');
+
+                // Show searching state
+                searchInfo.textContent = '搜索中...';
+                searchInfo.classList.add('visible', 'highlight');
+
+                this.state.isSearching = true;
+
+                try {
+                    await this.loadLogs();
+
+                    // Update search info
+                    const count = this.state.logs.length;
+                    const totalCount = this.state.totalCount || 0;
+
+                    if (count > 0) {
+                        searchInfo.textContent = `找到 ${count} 条结果${totalCount > count ? ` (共 ${totalCount} 条匹配)` : ''}`;
+                        searchInfo.classList.add('highlight');
+                    } else {
+                        searchInfo.textContent = '未找到匹配结果';
+                        searchInfo.classList.remove('highlight');
+                    }
+                } catch (error) {
+                    searchInfo.textContent = '搜索失败';
+                    searchInfo.classList.remove('highlight');
+                    this.showToast('搜索失败，请重试', 'error');
+                } finally {
+                    this.state.isSearching = false;
+                }
+            },
+
+            clearSearch() {
+                const searchInput = document.getElementById('searchInput');
+                const searchClear = document.getElementById('searchClear');
+                const searchInfo = document.getElementById('searchInfo');
+
+                searchInput.value = '';
+                searchClear.classList.remove('visible');
+                searchInfo.classList.remove('visible', 'highlight');
+                searchInfo.textContent = '';
+
+                this.state.searchQuery = '';
+                this.state.currentPage = 1;
+
+                // Clear any pending search timeout
+                if (this.state.searchTimeout) {
+                    clearTimeout(this.state.searchTimeout);
+                    this.state.searchTimeout = null;
+                }
+
+                this.loadLogs();
             },
 
             async checkSession() {
@@ -1420,7 +1599,15 @@
                         headers['X-Session-Token'] = this.state.sessionToken;
                     }
 
-                    const response = await fetch(`/api/admin/logs?page=${this.state.currentPage}&page_size=${this.state.pageSize}&tz=${this.state.timezoneOffset}`, {
+                    // Build URL with search query if present
+                    let url = `/api/admin/logs?page=${this.state.currentPage}&page_size=${this.state.pageSize}&tz=${this.state.timezoneOffset}`;
+                    if (this.state.searchQuery) {
+                        // URL encode the search query
+                        const encodedQuery = encodeURIComponent(this.state.searchQuery);
+                        url += `&search=${encodedQuery}`;
+                    }
+
+                    const response = await fetch(url, {
                         headers: headers
                     });
 
@@ -1435,6 +1622,7 @@
                     // Server returns only one page of data
                     this.state.totalPages = data.total_pages || 1;
                     this.state.logs = data.logs || [];
+                    this.state.totalCount = data.total_count || 0;
                     // Do not store full dataset; rely on pagination
                     this.state.fullData = [];
 
